@@ -47,8 +47,10 @@ public class ForEachTag extends LoopTagSupport {
 
     protected void prepare() throws JspTagException {
         nodesIndex = 0;
+        System.out.println("Using XUtil selectNodes additional XObject addition.");
         XPathUtil xu = new XPathUtil(pageContext);
         nodes = xu.selectNodes(XPathUtil.getContext(this), select);
+        System.out.println("Got: "+nodes);
     }
 
     protected boolean hasNext() throws JspTagException {

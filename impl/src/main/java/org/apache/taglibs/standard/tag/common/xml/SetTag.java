@@ -66,10 +66,13 @@ public class SetTag extends TagSupport {
     // applies XPath expression from 'select' and stores the result in 'var'
     public int doStartTag() throws JspException {
         // process the query
+        // TODO: Remember to remove all the print outs
+        System.out.println("Using XUtil selectNodes additional XObject addition.");
         XPathUtil xu = new XPathUtil(pageContext);
         List result =
         xu.selectNodes(XPathUtil.getContext(this), select);
         Object ret = result;
+        System.out.println("Got: "+result);
         
         // unwrap primitive types if that's what we received
         if (result.size() == 1) {
@@ -77,10 +80,15 @@ public class SetTag extends TagSupport {
             if (o instanceof String || o instanceof Boolean
             || o instanceof Number)
                 ret = o;
+            System.out.println("Result instance of: " + o.getClass().getName());
         }
-        
+        System.out.println("Returning: " + ret + " from class: " + ret.getClass().getName());
         // expose the final result
         pageContext.setAttribute(var, ret, scope);
+        System.out.println("PageContext: "+pageContext + " using var: "+var);
+        pageContext.getAttributeNamesInScope(scope).asIterator().forEachRemaining((att) -> System.out.println(att));
+        System.out.println("PageContext var attribute saved: "+pageContext.getAttribute(var));
+        System.out.println("PageContext class origin: "+pageContext.getClass().getName());
         return SKIP_BODY;
     }
 

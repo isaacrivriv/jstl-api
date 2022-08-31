@@ -17,6 +17,7 @@
 
 package org.apache.taglibs.standard.tag.common.xml;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.Vector;
 import java.security.AccessController;
@@ -92,11 +93,19 @@ public class XPathUtil {
     
     private static final String XPATH_FACTORY_CLASS_NAME = 
             "org.apache.taglibs.standard.tag.common.xml.JSTLXPathFactory";
+
+    // private static final String XPATH_FACTORY_CLASS_NAME = 
+    //         "org.apache.taglibs.standard.tag.common.xml.JSTLSaxonXPathFactory";
+    
     private static XPathFactory XPATH_FACTORY;
     
     private static JSTLXPathNamespaceContext jstlXPathNamespaceContext = null;
     
     private static DocumentBuilderFactory dbf = null;
+
+    private static final String USE_SAXON_PROPERTY = "org.apache.tags.useSaxonTransformer";
+
+    private static final boolean USE_SAXON = Boolean.getBoolean(USE_SAXON_PROPERTY);
     
     static {
         initXPathFactory();
@@ -110,25 +119,34 @@ public class XPathUtil {
         // as a class name. The method will try to create a new instance of 
         // this class by using the class loader, and returns it if it is 
         // successfully created.
-        if (System.getSecurityManager() !=  null) {
-             AccessController.doPrivileged(new PrivilegedAction<Object>(){
-                public Object run(){
-                    System.setProperty(XPathFactory.DEFAULT_PROPERTY_NAME + 
-                            ":" + XPathFactory.DEFAULT_OBJECT_MODEL_URI, 
-                            XPATH_FACTORY_CLASS_NAME);
-                    return null;
-                }
-            });
-        } else {
-            System.setProperty(XPathFactory.DEFAULT_PROPERTY_NAME + 
-                ":" + XPathFactory.DEFAULT_OBJECT_MODEL_URI, 
-                XPATH_FACTORY_CLASS_NAME);
+        System.out.println("Using Saxon library? " + USE_SAXON);
+        if(!USE_SAXON){
+            if (System.getSecurityManager() !=  null) {
+                AccessController.doPrivileged(new PrivilegedAction<Object>(){
+                   public Object run(){
+                       System.setProperty(XPathFactory.DEFAULT_PROPERTY_NAME + 
+                               ":" + XPathFactory.DEFAULT_OBJECT_MODEL_URI, 
+                               XPATH_FACTORY_CLASS_NAME);
+                       return null;
+                   }
+               });
+           } else {
+               System.setProperty(XPathFactory.DEFAULT_PROPERTY_NAME + 
+                   ":" + XPathFactory.DEFAULT_OBJECT_MODEL_URI, 
+                   XPATH_FACTORY_CLASS_NAME);
+           }
+           try {
+               XPATH_FACTORY = XPathFactory.newInstance(XPathFactory.DEFAULT_OBJECT_MODEL_URI);
+           } catch (XPathFactoryConfigurationException xpce) {
+               xpce.printStackTrace();
+           }
+        }else{
+            // No modification Saxon
+            // XPATH_FACTORY = new net.sf.saxon.xpath.XPathFactoryImpl();
+            // Custom Saxon
+            XPATH_FACTORY = new JSTLSaxonXPathFactory();
         }
-        try {
-            XPATH_FACTORY = XPathFactory.newInstance(XPathFactory.DEFAULT_OBJECT_MODEL_URI);
-        } catch (XPathFactoryConfigurationException xpce) {
-            xpce.printStackTrace();
-        }
+
 	}
     
     /** Initialize globally useful data. */
@@ -173,14 +191,16 @@ public class XPathUtil {
      */
     public String valueOf(Node contextNode, String xpathString) 
         throws JspTagException {
-        // p("******** valueOf(" + n + ", " + xpathString + ")");
+        p("******** valueOf(" + contextNode + ", " + xpathString + ")");
         XPathVariableResolver jxvr = new JSTLXPathVariableResolver(pageContext);
         
         XPath xpath = XPATH_FACTORY.newXPath();
         xpath.setNamespaceContext(jstlXPathNamespaceContext);
         xpath.setXPathVariableResolver(jxvr);
         try {
-            return xpath.evaluate(xpathString, contextNode);
+            String res = xpath.evaluate(xpathString, contextNode);
+            System.out.println("Got result: "+res);
+            return res;
         } catch (XPathExpressionException ex) {
             throw new JspTagException(ex.toString(), ex);
         }
@@ -219,6 +239,9 @@ public class XPathUtil {
             xpath.setXPathVariableResolver(jxvr);
             Object nl = xpath.evaluate(
                 xpathString, contextNode, JSTLXPathConstants.OBJECT);
+            // TODO: Remove this
+            // Object nl = xpath.evaluate(
+            //     xpathString, contextNode, XPathConstants.NODESET);
             return new JSTLNodeList( nl );
         } catch (XPathExpressionException ex ) {
             throw new JspTagException(ex.toString(), ex);
@@ -261,7 +284,7 @@ public class XPathUtil {
     //*********************************************************************
     // Utility methods
     
-    private static void p(String s) {
+    public static void p(String s) {
         System.out.println("[XPathUtil] " + s);
     }
     
@@ -287,38 +310,45 @@ class JSTLNodeList extends Vector implements NodeList   {
     
     Vector nodeVector;
 
+    // TODO: Remember to remove all the print outs
+
     public JSTLNodeList ( Vector nodeVector ) {
+        System.out.println("Vector Node constructor");
         this.nodeVector = nodeVector;
     }
 
     public JSTLNodeList ( NodeList nl ) {
+        System.out.println("Nodelist constructor");
         nodeVector = new Vector();
-        //p("[JSTLNodeList] nodelist details");
+        XPathUtil.p("[JSTLNodeList] nodelist details");
         for ( int i=0; i<nl.getLength(); i++ ) {
             Node currNode = nl.item(i);
-            //XPathUtil.printDetails ( currNode );
+            XPathUtil.printDetails ( currNode );
             nodeVector.add(i, nl.item(i) );
         }
     }
 
     public JSTLNodeList ( Node n ) {
+        System.out.println("Node constructor");
         nodeVector = new Vector();
         nodeVector.addElement( n );
     }
 
     public JSTLNodeList (Object o) {
+        System.out.println("Object constructor");
         nodeVector = new Vector();
         
         if (o instanceof NodeList) {
             NodeList nl = (NodeList)o;
             for ( int i=0; i<nl.getLength(); i++ ) {
                 Node currNode = nl.item(i);
-                //XPathUtil.printDetails ( currNode );
+                XPathUtil.printDetails ( currNode );
                 nodeVector.add(i, nl.item(i) );
             }
         } else {
             nodeVector.addElement( o );
         }
+        System.out.println("Using XUtil selectNodes additional XObject addition: " + o + " from class: " + o.getClass().getName());
     }
 
     public Node item ( int index ) {
@@ -342,6 +372,14 @@ class JSTLNodeList extends Vector implements NodeList   {
         return nodeVector.size( );
     }
 
+    // Iterator objects
+
+    @Override
+    public synchronized Iterator iterator() {
+        // TODO Auto-generated method stub
+        return nodeVector.iterator();
+    }
+
     // Can implement other Vector methods to redirect those methods to 
     // the vector in the variable param. As we are not using them as part 
     // of this implementation we are not doing that here. If this changes
@@ -352,3 +390,4 @@ class JSTLNodeList extends Vector implements NodeList   {
 
 
 
+// 

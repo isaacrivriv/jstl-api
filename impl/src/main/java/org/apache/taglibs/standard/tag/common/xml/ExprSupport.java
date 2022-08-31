@@ -63,6 +63,9 @@ public abstract class ExprSupport extends TagSupport {
         try {
 	    XPathUtil xu = new XPathUtil(pageContext);
 	    String result = xu.valueOf(XPathUtil.getContext(this), select);
+        // TODO: Remember to remove all the print outs
+        // pageContext.getAttributeNamesInScope(XPathUtil.).asIterator().forEachRemaining((att) -> System.out.println(att));
+        // System.out.println("PageContext var attribute saved: "+pageContext.getAttribute(var));
 	    org.apache.taglibs.standard.tag.common.core.OutSupport.out(
               pageContext, escapeXml, result);
 	    return SKIP_BODY;
