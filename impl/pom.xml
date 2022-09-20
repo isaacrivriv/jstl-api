@@ -295,6 +295,7 @@
                                     <artifact>net.sf.saxon:Saxon-HE</artifact>
                                     <excludes>
                                         <exclude>META-INF/**</exclude>
+                                        <exlude>net/sf/saxon/xpath/JAXPVariableReference.class</exlude>
                                     </excludes>
                                 </filter>
                             </filters>
